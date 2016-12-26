@@ -1,0 +1,10 @@
+CONNECTIONMANAGER=isc-dhcp-client,rfkill
+
+SUPPRESS_DISCLAIMER=Y
+SUPPRESS_WARNING=Y
+FORCE=Y
+CRYPT=Y
+BOOT=
+
+BOOTDEVICE=/dev/mmcblk0p1
+ROOTDEVICE=/dev/mapper/crypt_sd2

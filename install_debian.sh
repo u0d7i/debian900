@@ -60,6 +60,9 @@ ${DEBUG:+set -x}
 : $USB_GATEWAY
 : $USERNAME
 : $REALNAME
+: $CRYPT
+: $BOOT
+: $BOOTDEVICE
 
 # Check user
 test `id -u` -eq 0 || abort "Must be root"
@@ -84,14 +87,17 @@ KERNELDEB=linux-image-"$KERNELRELEASE"_$KERNELRELEASE-`cat $KERNELSOURCE/.versio
 test x$FSTYPE = "x`awk '{ if ($2 == "'$MOUNTPOINT'") print $3 }' < /proc/mounts`" || abort "Unexpected filesystem or filesystem not mounted"
 
 # Check that mounted filesystem contains nothing but lost+found
-test xlost+found = "x`ls $MOUNTPOINT`" || abort "Filesystem already contains data or is not formatted correctly"
+if [ "x$FORCE" != xY ] && [ "x$FORCE" != xy ]; then
+  test xlost+found = "x`ls $MOUNTPOINT`" || abort "Filesystem already contains data or is not formatted correctly"
+fi
 
 # Check that build system can execute ARM binaries
 update-binfmts --display qemu-arm | grep -q enable || abort "ARM executable binary format not registered"
 
 # Set up the root device name
 SLICE=`awk '{ if ($2 == "'$MOUNTPOINT'") print substr($1, length($1), 1) }' < /proc/mounts`
-ROOTDEVICE=/dev/mmcblk0p$SLICE
+ROOTDEVICE="${ROOTDEVICE:-/dev/mmcblk0p$SLICE}"
+BOOTDEVICE=${BOOTDEVICE:-$ROOTDEVICE}
 
 : ${SUPPRESS_DISCLAIMER:=}
 if [ "x$SUPPRESS_DISCLAIMER" != xY ] && [ "x$SUPPRESS_DISCLAIMER" != xy ]; then
@@ -139,6 +145,15 @@ cat << EOF > $MOUNTPOINT/etc/fstab
 #
 # <file system> <mount point>   <type>  <options>       <dump>  <pass>
 $ROOTDEVICE	/	$FSTYPE	errors=remount-ro,noatime	0	1
+EOF
+
+if [ "x$CRYPT" = xY ] || [ "x$CRYPT" = xy ]; then
+        cat << EOF >> $MOUNTPOINT/etc/fstab
+$BOOTDEVICE  /boot $FSTYPE noatime 0 0
+EOF
+fi
+
+cat << EOF >> $MOUNTPOINT/etc/fstab
 proc	/proc	proc	nodev,noexec,nosuid	0	0
 none	/tmp	tmpfs	noatime	0	0
 $SWAPDEVICE	none	swap	sw	0	0
@@ -156,6 +171,15 @@ fi
 
 if [ x$ENABLE_LXC = xY ] || [ x$ENABLE_LXC = xy ]; then
 	echo "cgroup	/sys/fs/cgroup	cgroup	defaults	0	0" >> $MOUNTPOINT/etc/fstab
+fi
+
+# create crypttab if crypto is enabled
+# FIXME: via variables
+if [ "x$CRYPT" = xY ] || [ "x$CRYPT" = xy ]; then
+  cat << EOF >> $MOUNTPOINT/etc/crypttab
+crypt_sd2 /dev/mmcblk0p2 none luks
+crypt_sd3 /dev/mmcblk0p3 /dev/urandom size=256,swap
+EOF
 fi
 
 # Change power button behaviour
@@ -206,7 +230,7 @@ echo 'SUBSYSTEM=="net", ACTION=="add", DRIVERS=="?*", ATTR{address}=="?*", ATTR{
 cp $KERNELSOURCE/../$KERNELDEB $MOUNTPOINT/var/tmp
 
 # Set up initramfs modules
-printf "omaplfb\nsd_mod\nomap_hsmmc\nmmc_block\nomap_wdt\ntwl4030_wdt\n" >> $MOUNTPOINT/etc/initramfs-tools/modules
+printf "omaplfb\nsd_mod\nomap_hsmmc\nmmc_block\nomap_wdt\ntwl4030_wdt\nleds_lp5523\n" >> $MOUNTPOINT/etc/initramfs-tools/modules
 
 # Create update-initramfs hook to update u-boot images
 mkdir -p $MOUNTPOINT/etc/initramfs/post-update.d
@@ -225,6 +249,32 @@ mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 -n initramfs -d \$INITRAMFS
 EOF
 chmod +x $MOUNTPOINT/etc/initramfs/post-update.d/update-u-boot
 
+# Create initramfs script to turn on keyboard leds
+mkdir -p $MOUNTPOINT/etc/initramfs-tools/scripts/local-top/
+cat << EOF > $MOUNTPOINT/etc/initramfs-tools/scripts/local-top/kbdled
+#!/bin/sh
+PREREQ=""
+prereqs()
+{
+        echo "\$PREREQ"
+}
+
+case \$1 in
+prereqs)
+        prereqs
+        exit 0
+        ;;
+esac
+
+for n in 1 2 3 4 5 6
+do
+        echo 50 > /sys/class/leds/lp5523\:kb\${n}/brightness
+done
+exit 0
+
+EOF
+chmod +x $MOUNTPOINT/etc/initramfs-tools/scripts/local-top/kbdled
+
 # Create u-boot commands
 cat << EOF > $MOUNTPOINT/boot/u-boot.cmd
 setenv mmcnum 0
@@ -232,8 +282,8 @@ setenv mmcpart $SLICE
 setenv mmctype $FSTYPE
 setenv bootargs root=$ROOTDEVICE $CMDLINE
 setenv setup_omap_atag
-setenv mmckernfile /boot/uImage-$KERNELRELEASE
-setenv mmcinitrdfile /boot/uInitrd-$KERNELRELEASE
+setenv mmckernfile $BOOT/uImage-$KERNELRELEASE
+setenv mmcinitrdfile $BOOT/uInitrd-$KERNELRELEASE
 setenv mmcscriptfile
 run trymmckerninitrdboot
 EOF
@@ -356,10 +406,10 @@ mkdir -p /etc/bootmenu.d
 # Create U-Boot configuration file
 cat > /etc/bootmenu.d/$BOOTSEQUENCE-Debian_GNU_Linux-$RELEASE-$DEBARCH-$KERNELRELEASE.item << EOF2
 ITEM_NAME="Debian GNU/Linux $RELEASE $DEBARCH $KERNELRELEASE"
-ITEM_DEVICE="\\\${EXT_CARD}p${ROOTDEVICE##*p}"
+ITEM_DEVICE="\\\${EXT_CARD}p${BOOTDEVICE##*p}"
 ITEM_FSTYPE="$FSTYPE"
-ITEM_KERNEL="/boot/uImage-$KERNELRELEASE"
-ITEM_INITRD="/boot/uInitrd-$KERNELRELEASE"
+ITEM_KERNEL="$BOOT/uImage-$KERNELRELEASE"
+ITEM_INITRD="$BOOT/uInitrd-$KERNELRELEASE"
 ITEM_CMDLINE="root=$ROOTDEVICE $CMDLINE"
 EOF2
 
