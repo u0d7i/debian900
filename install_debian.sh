@@ -41,6 +41,7 @@ ${DEBUG:+set -x}
 : $RELEASE
 : $DEBARCH
 : $MIRROR
+: $DBTOPT
 : $HOSTNAME
 : $CMDLINE
 : $SWAPDEVICE
@@ -126,7 +127,7 @@ umask $UMASK
 trap clean_up 0 1 2 15
 
 # Bootstrap Debian system
-qemu-debootstrap ${DEBUG:+--verbose} --arch=$DEBARCH --variant=minbase --include=$ESSENTIAL${RECOMMENDED:+,$RECOMMENDED}${EXTRA:+,$EXTRA} $RELEASE $MOUNTPOINT $MIRROR
+qemu-debootstrap ${DBTOPT} ${DEBUG:+--verbose} --arch=$DEBARCH --variant=minbase --include=$ESSENTIAL${RECOMMENDED:+,$RECOMMENDED}${EXTRA:+,$EXTRA} $RELEASE $MOUNTPOINT $MIRROR
 
 # Configure APT data sources
 echo "deb $MIRROR $RELEASE main contrib non-free" > $MOUNTPOINT/etc/apt/sources.list
