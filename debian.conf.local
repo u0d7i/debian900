@@ -1,8 +1,3 @@
-# uncomment for devuan
-#MIRROR=http://auto.mirror.devuan.org/merged
-#HOSTNAME=devuan900
-#DBTOPT="--no-check-gpg"
-
 CONNECTIONMANAGER=isc-dhcp-client,rfkill
 
 SUPPRESS_DISCLAIMER=Y
@@ -13,3 +8,10 @@ BOOT=
 
 BOOTDEVICE=/dev/mmcblk0p1
 ROOTDEVICE=/dev/mapper/crypt_sd2
+
+# uncomment for devuan
+#MIRROR=http://auto.mirror.devuan.org/merged
+#HOSTNAME=devuan900
+#DBTOPT="--no-check-gpg"
+#ESSENTIAL="${ESSENTIAL},devuan-keyring"
+
