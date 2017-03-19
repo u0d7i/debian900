@@ -10,6 +10,7 @@ BOOTDEVICE=/dev/mmcblk0p1
 ROOTDEVICE=/dev/mapper/crypt_sd2
 
 # uncomment for devuan
+#DISTRO="Devuan"
 #MIRROR=http://auto.mirror.devuan.org/merged
 #HOSTNAME=devuan900
 #DBTOPT="--no-check-gpg"

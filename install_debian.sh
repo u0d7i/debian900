@@ -38,6 +38,7 @@ ${DEBUG:+set -x}
 : $MOUNTPOINT
 : $FSTYPE
 : $UMASK
+: $DISTRO
 : $RELEASE
 : $DEBARCH
 : $MIRROR
@@ -405,8 +406,8 @@ test \$(id -u) -eq 0 || abort "Must be root"
 mkdir -p /etc/bootmenu.d
 
 # Create U-Boot configuration file
-cat > /etc/bootmenu.d/$BOOTSEQUENCE-Debian_GNU_Linux-$RELEASE-$DEBARCH-$KERNELRELEASE.item << EOF2
-ITEM_NAME="Debian GNU/Linux $RELEASE $DEBARCH $KERNELRELEASE"
+cat > /etc/bootmenu.d/$BOOTSEQUENCE-$DISTRO-$RELEASE-$DEBARCH-$KERNELRELEASE.item << EOF2
+ITEM_NAME="$DISTRO $RELEASE $DEBARCH $KERNELRELEASE"
 ITEM_DEVICE="\\\${EXT_CARD}p${BOOTDEVICE##*p}"
 ITEM_FSTYPE="$FSTYPE"
 ITEM_KERNEL="$BOOT/uImage-$KERNELRELEASE"
