@@ -9,6 +9,8 @@ BOOT=
 BOOTDEVICE=/dev/mmcblk0p1
 ROOTDEVICE=/dev/mapper/crypt_sd2
 
+KEYMAP_URL=https://raw.githubusercontent.com/u0d7i/n9h/master/kbd/rx51_us.map
+
 # uncomment for devuan
 #DISTRO="Devuan"
 #MIRROR=http://auto.mirror.devuan.org/merged
